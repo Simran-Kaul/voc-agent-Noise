@@ -97,11 +97,6 @@ def generate_delta_report():
     with open("weekly_delta_report.md", "w") as f:
         f.write("\n".join(report))
     
-    report.append("\n## Key Insight\n")
-
-    if theme_count:
-        top_theme = theme_count.most_common(1)[0][0]
-        report.append(f"Most discussed issue this week: {top_theme}")
 
     conn.close()
 
