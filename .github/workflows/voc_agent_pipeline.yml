@@ -29,3 +29,6 @@ jobs:
           python tools/flipkart-page.py
           python tools/analyze_reviews.py
           python tools/generate_report.py
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}  
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}  
