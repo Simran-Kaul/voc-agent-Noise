@@ -7,6 +7,8 @@ from db_insert import insert_reviews
 load_dotenv()
 
 app = FirecrawlApp(api_key=os.getenv("FIRECRAWL_API_KEY"))
+conn = sqlite3.connect("reviews.db")
+cursor = conn.cursor()
 
 product_name = "Noise Master Buds"
 
@@ -14,12 +16,22 @@ base_url ="https://www.flipkart.com/noise-master-buds-sound-bose-49db-anc-6-mic-
 
 all_reviews = []
 
+import datetime
+
+def log_delta(new_reviews):
+
+    with open("weekly_delta_report.md", "w") as f:
+
+        f.write("# Weekly Review Delta\n\n")
+        f.write(f"Run Date: {datetime.datetime.now()}\n\n")
+        f.write(f"New Reviews Captured: {len(new_reviews)}\n\n")
+
+        for r in new_reviews[:5]:
+            f.write(f"- {r['review'][:200]}\n")
 
 # check if review already exists in database
-def review_exists(review_text):
 
-    conn = sqlite3.connect("reviews.db")
-    cursor = conn.cursor()
+def review_exists(review_text):
 
     cursor.execute(
         "SELECT 1 FROM reviews WHERE review = ?",
@@ -27,8 +39,6 @@ def review_exists(review_text):
     )
 
     exists = cursor.fetchone()
-
-    conn.close()
 
     return exists is not None
 
@@ -108,8 +118,11 @@ if all_reviews:
 
     insert_reviews(all_reviews)
 
+    log_delta(all_reviews)
+
     print("Reviews saved to database")
 
 else:
 
     print("No new reviews found")
+conn.close()

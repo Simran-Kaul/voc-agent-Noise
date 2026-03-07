@@ -16,10 +16,15 @@ You are a Voice of Customer (VoC) analyst for a consumer electronics company.
 
 Analyze the following customer review.
 
+Return ONLY valid JSON.
+Do not include markdown.
+Do not include explanations.
+
 Return ONLY valid JSON in this format:
 
 {{
   "review": "<original review>",
+  "product": "<original product>",
   "sentiment": "Positive | Neutral | Negative",
   "themes": ["list of themes"],
   "product_action": "action for product engineering team",
@@ -34,14 +39,17 @@ Guidelines:
 - Do NOT suggest replacing the product unless explicitly mentioned by the user.
 
 Themes can include:
+
 Sound Quality
-Battery
-Comfort
+Battery Life
+Comfort/Fit
 ANC
 Call Quality
 Connectivity
 Build Quality
-Price
+Price/Value
+App Experience
+Delivery
 
 Review:
 {review}
@@ -62,7 +70,7 @@ def analyze_reviews():
 
     # Only analyze reviews that don't have sentiment yet
     cursor.execute("""
-        SELECT id, review 
+        SELECT id, product, review 
         FROM reviews
         WHERE sentiment IS NULL
     """)

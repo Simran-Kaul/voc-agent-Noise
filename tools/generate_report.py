@@ -8,7 +8,7 @@ def generate_global_report():
     cursor = conn.cursor()
 
     cursor.execute("""
-    SELECT sentiment, themes, product_action, marketing_action, support_action
+    SELECT product, sentiment, themes, product_action, marketing_action, support_action
     FROM reviews
     WHERE scraped_at >= datetime('now', '-2 hours')
     """)
@@ -72,6 +72,41 @@ def generate_global_report():
 
     print("Global VoC report generated: global_voc_report.md")
 
+def generate_delta_report():
+
+    conn = sqlite3.connect("reviews.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT review, sentiment, themes
+    FROM reviews
+    WHERE scraped_at >= datetime('now', '-7 days')
+    """)
+
+    rows = cursor.fetchall()
+
+    report = []
+
+    report.append("# Weekly Review Delta\n")
+
+    report.append(f"Total new reviews captured: {len(rows)}\n")
+
+    for r in rows[:10]:
+        report.append(f"- {r[0][:200]}")
+
+    with open("weekly_delta_report.md", "w") as f:
+        f.write("\n".join(report))
+
+    conn.close()
+
+    print("Weekly delta report generated: weekly_delta_report.md")
+
 
 if __name__ == "__main__":
     generate_global_report()
+    generate_delta_report()
+    report.append("\n## Key Insight\n")
+
+    if theme_count:
+        top_theme = theme_count.most_common(1)[0][0]
+        report.append(f"Most discussed issue this week: {top_theme}")

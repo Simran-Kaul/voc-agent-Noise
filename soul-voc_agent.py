@@ -1,98 +1,92 @@
+import sqlite3
 import subprocess
-from groq import Groq
 import os
+from groq import Groq
 from dotenv import load_dotenv
-from tools.run_sql import run_sql
 
 load_dotenv()
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 
-# -------------------------------
-# LOAD AGENT SOUL
-# -------------------------------
+# -----------------------------
+# TOOL FUNCTIONS
+# -----------------------------
 
-def load_soul():
-    with open("soul.md", "r") as f:
-        return f.read()
+def run_sql(query):
 
+    conn = sqlite3.connect("reviews.db")
+    cursor = conn.cursor()
 
-SOUL = load_soul()
+    cursor.execute(query)
+    rows = cursor.fetchall()
 
+    conn.close()
 
-# -------------------------------
-# TOOL DEFINITIONS
-# -------------------------------
+    return rows
+
 
 def scrape_reviews():
-    print("\nRunning tool: scrape_reviews\n")
+
+    print("Running scraper...")
     subprocess.run(["python", "tools/flipkart-page.py"])
 
 
+def analyze_reviews():
+
+    print("Running analysis...")
+    subprocess.run(["python", "tools/analyze_reviews.py"])
+
+
 def generate_report():
-    print("\nRunning tool: generate_report\n")
+
+    print("Generating report...")
     subprocess.run(["python", "tools/generate_report.py"])
 
 
-# -------------------------------
-# TOOL REGISTRY
-# -------------------------------
+# -----------------------------
+# AGENT REASONING
+# -----------------------------
 
-TOOLS = {
-    "scrape_reviews": scrape_reviews,
-    "run_sql": run_sql,
-    "generate_report": generate_report
-}
-
-
-# -------------------------------
-# AGENT DECISION
-# -------------------------------
-
-def decide_tool(user_input):
+def decide_action(question):
 
     prompt = f"""
-{SOUL}
+You are a Voice of Customer intelligence agent.
 
-User request:
-{user_input}
+Your job is to decide how to answer the user's question.
 
-You are a tool router.
+Available actions:
 
-Return ONLY ONE tool name from the list below:
-
-scrape_reviews
-run_sql
-generate_report
-
-Rules:
-
-Use run_sql when the user asks about the reviews database.
+run_sql → retrieve data from reviews database  
+scrape_reviews → collect latest reviews  
+analyze_reviews → analyze unanalyzed reviews  
+generate_report → create VoC reports  
 
 Database schema:
 
 Table: reviews
 
 Columns:
-review TEXT
-sentiment TEXT
-themes TEXT
-scraped_at TIMESTAMP
+review
+sentiment
+themes
+product_action
+marketing_action
+support_action
+scraped_at
 
-Examples of run_sql queries:
-- how many reviews exist
-- list reviews
-- show negative reviews
-- sentiment distribution
-- theme frequency
+User question:
+{question}
 
-Use scrape_reviews when the user asks to collect or update reviews.
+Return ONLY JSON:
 
-Use generate_report when the user asks to generate or export a VoC report.
+{{
+"action": "...",
+"sql": "..."
+}}
 
-Return ONLY the tool name.
-No explanation.
+If action is run_sql, provide a SQL query.
+Otherwise sql should be empty.
 """
 
     response = client.chat.completions.create(
@@ -100,18 +94,49 @@ No explanation.
         messages=[{"role": "user", "content": prompt}]
     )
 
-    tool = response.choices[0].message.content.strip().lower()
+    result = response.choices[0].message.content
+    result = result.replace("```json", "").replace("```", "").strip()
 
-    for t in TOOLS.keys():
-        if t in tool:
-            return t
-
-    return tool
+    import json
+    return json.loads(result)
 
 
-# -------------------------------
+# -----------------------------
+# RESPONSE GENERATION
+# -----------------------------
+
+def generate_answer(question, data):
+
+    prompt = f"""
+You are a Voice of Customer analyst.
+
+User question:
+{question}
+
+Database data:
+{data}
+
+Answer conversationally.
+
+Provide:
+• Key insights
+• Themes observed
+• Suggested action for product/marketing/support teams
+
+Use only the provided data.
+"""
+
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    return response.choices[0].message.content
+
+
+# -----------------------------
 # AGENT LOOP
-# -------------------------------
+# -----------------------------
 
 def run_agent():
 
@@ -119,84 +144,42 @@ def run_agent():
 
     while True:
 
-        user_input = input("\nAsk the agent: ")
+        question = input("\nAsk the agent: ")
 
-        if user_input.lower() in ["exit", "quit"]:
+        if question.lower() in ["exit", "quit"]:
             break
 
-        tool = decide_tool(user_input)
+        decision = decide_action(question)
 
-        print("\nAgent decided to run:", tool)
+        action = decision["action"]
+        sql = decision["sql"]
 
-        if tool in TOOLS:
+        print("\nAgent decision:", action)
 
-            if tool == "run_sql":
+        if action == "run_sql":
 
-                # Step 1: LLM generates SQL
-                sql_prompt = f"""
-Write a SQLite query to answer the user question.
+            data = run_sql(sql)
 
-Database schema:
+            answer = generate_answer(question, data)
 
-Table: reviews
-Columns: review, sentiment, themes, scraped_at
+            print("\nAgent:\n")
+            print(answer)
 
-User question:
-{user_input}
+        elif action == "scrape_reviews":
 
-Rules:
-Return ONLY the SQL query.
-Do NOT include markdown.
-Do NOT include explanations.
-Do NOT include ```sql blocks.
-"""
+            scrape_reviews()
 
-                sql_response = client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=[{"role": "user", "content": sql_prompt}]
-                )
+        elif action == "analyze_reviews":
 
-                sql_query = sql_response.choices[0].message.content.strip()
+            analyze_reviews()
 
-                # remove markdown formatting
-                sql_query = sql_query.replace("```sql", "").replace("```", "").strip()
+        elif action == "generate_report":
 
-                # ensure only SQL statement remains
-                if ";" in sql_query:
-                    sql_query = sql_query.split(";")[0] + ";"
-                print("\nGenerated SQL:\n", sql_query)
-
-                rows = run_sql(sql_query)
-
-                # Step 2: LLM explains results
-                explain_prompt = f"""
-User question:
-{user_input}
-
-SQL result:
-{rows}
-
-Explain the answer conversationally.
-"""
-
-                explanation = client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=[{"role": "user", "content": explain_prompt}]
-                )
-
-                print("\nAgent:\n")
-                print(explanation.choices[0].message.content)
-
-            else:
-
-                result = TOOLS[tool]()
-
-                if result:
-                    print("\nAgent:\n")
-                    print(result)
+            generate_report()
 
         else:
-            print("Unknown tool:", tool)
+
+            print("Unknown action")
 
 
 if __name__ == "__main__":
