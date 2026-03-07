@@ -1,3 +1,4 @@
+
 import sqlite3
 from collections import Counter
 
@@ -10,60 +11,70 @@ def generate_global_report():
     cursor.execute("""
     SELECT product, sentiment, themes, product_action, marketing_action, support_action
     FROM reviews
-    WHERE scraped_at >= datetime('now', '-2 hours')
     """)
 
     rows = cursor.fetchall()
 
-    sentiments = []
-    themes = []
-    product_actions = []
-    marketing_actions = []
-    support_actions = []
+    products = {}
 
     for r in rows:
 
-        sentiments.append(r[0])
+        product = r[0]
+
+        if product not in products:
+            products[product] = {
+                "sentiments": [],
+                "themes": [],
+                "product_actions": [],
+                "marketing_actions": [],
+                "support_actions": []
+            }
 
         if r[1]:
-            themes.extend(r[1].split(","))
+            products[product]["sentiments"].append(r[1])
 
         if r[2]:
-            product_actions.append(r[2])
+            products[product]["themes"].extend(r[2].split(","))
 
         if r[3]:
-            marketing_actions.append(r[3])
+            products[product]["product_actions"].append(r[3])
 
         if r[4]:
-            support_actions.append(r[4])
+            products[product]["marketing_actions"].append(r[4])
 
-    sentiment_count = Counter(sentiments)
-    theme_count = Counter(themes)
+        if r[5]:
+            products[product]["support_actions"].append(r[5])
 
     report = []
 
     report.append("# Voice of Customer Global Report\n")
-    report.append("# VoC Delta Report (Last 2 Hours)\n")
 
-    report.append("## Sentiment Summary\n")
-    for k, v in sentiment_count.items():
-        report.append(f"{k}: {v}")
+    for product, data in products.items():
 
-    report.append("\n## Top Mentioned Themes\n")
-    for theme, count in theme_count.most_common(5):
-        report.append(f"{theme}: {count}")
+        sentiment_count = Counter(data["sentiments"])
+        theme_count = Counter(data["themes"])
 
-    report.append("\n## Product Team Action Items\n")
-    for a in product_actions[:5]:
-        report.append(f"- {a}")
+        report.append(f"\n## {product}\n")
 
-    report.append("\n## Marketing Team Action Items\n")
-    for a in marketing_actions[:5]:
-        report.append(f"- {a}")
+        report.append("### Sentiment Summary\n")
+        for k, v in sentiment_count.items():
+            report.append(f"{k}: {v}")
 
-    report.append("\n## Support Team Action Items\n")
-    for a in support_actions[:5]:
-        report.append(f"- {a}")
+        report.append("\n### Top Mentioned Themes\n")
+        for theme, count in theme_count.most_common(5):
+            report.append(f"{theme}: {count}")
+
+        report.append("\n### Product Team Action Items\n")
+        for a in data["product_actions"][:5]:
+            report.append(f"- {a}")
+
+        report.append("\n### Marketing Team Action Items\n")
+        for a in data["marketing_actions"][:5]:
+            report.append(f"- {a}")
+
+        report.append("\n### Support Team Action Items\n")
+        for a in data["support_actions"][:5]:
+            report.append(f"- {a}")
 
     with open("global_voc_report.md", "w") as f:
         f.write("\n".join(report))
@@ -72,38 +83,73 @@ def generate_global_report():
 
     print("Global VoC report generated: global_voc_report.md")
 
+
 def generate_delta_report():
 
     conn = sqlite3.connect("reviews.db")
     cursor = conn.cursor()
 
     cursor.execute("""
-    SELECT review, sentiment, themes
+    SELECT product, review, sentiment, themes
     FROM reviews
     WHERE scraped_at >= datetime('now', '-7 days')
     """)
 
     rows = cursor.fetchall()
 
+    products = {}
+
+    for r in rows:
+
+        product = r[0]
+
+        if product not in products:
+            products[product] = {
+                "reviews": [],
+                "sentiments": [],
+                "themes": []
+            }
+
+        products[product]["reviews"].append(r[1])
+
+        if r[2]:
+            products[product]["sentiments"].append(r[2])
+
+        if r[3]:
+            products[product]["themes"].extend(r[3].split(","))
+
     report = []
 
     report.append("# Weekly Review Delta\n")
 
-    report.append(f"Total new reviews captured: {len(rows)}\n")
+    for product, data in products.items():
 
-    for r in rows[:10]:
-        report.append(f"- {r[0][:200]}")
+        report.append(f"\n## {product}\n")
+
+        report.append(f"New reviews captured: {len(data['reviews'])}\n")
+
+        sentiment_count = Counter(data["sentiments"])
+        theme_count = Counter(data["themes"])
+
+        report.append("### Sentiment Distribution\n")
+        for k, v in sentiment_count.items():
+            report.append(f"{k}: {v}")
+
+        report.append("\n### Emerging Themes\n")
+        for theme, count in theme_count.most_common(3):
+            report.append(f"{theme}: {count}")
+
+        report.append("\n### Sample Reviews\n")
+        for r in data["reviews"][:5]:
+            report.append(f"- {r[:200]}")
 
     with open("weekly_delta_report.md", "w") as f:
         f.write("\n".join(report))
-    
 
     conn.close()
 
     print("Weekly delta report generated: weekly_delta_report.md")
 
-
 if __name__ == "__main__":
     generate_global_report()
     generate_delta_report()
-    

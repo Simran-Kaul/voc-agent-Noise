@@ -10,7 +10,7 @@ app = FirecrawlApp(api_key=os.getenv("FIRECRAWL_API_KEY"))
 conn = sqlite3.connect("reviews.db")
 cursor = conn.cursor()
 
-product_name = "Noise Master Buds"
+product_name = "Noise Master Buds Max"
 
 base_url ="https://www.flipkart.com/noise-master-buds-max-sound-bose-segment-leading-anc-dynamic-eq-60-hr-playtime-bluetooth/product-reviews/itm85415864eeb6f?pid=ACCHGZH54UQZQTBN&lid=LSTACCHGZH54UQZQTBNM0UK9A&aid=overall&certifiedBuyer=false&sortOrder=MOST_RECENT&pageUID=1772904180455&page=1"
 
