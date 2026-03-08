@@ -2,7 +2,7 @@ import sqlite3
 
 def insert_reviews(reviews):
 
-    conn = sqlite3.connect("reviews.db")
+    conn = sqlite3.connect("data/reviews.db")
     cursor = conn.cursor()
 
     for r in reviews:

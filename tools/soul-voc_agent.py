@@ -7,7 +7,7 @@ import os
 load_dotenv()
 
 # connect SQLite
-db = SQLDatabase.from_uri("sqlite:///reviews.db")
+db = SQLDatabase.from_uri("sqlite:///data/reviews.db")
 
 # Groq model
 llm = ChatGroq(

@@ -1,11 +1,12 @@
 
 import sqlite3
 from collections import Counter
+import os
 
 
 def generate_global_report():
 
-    conn = sqlite3.connect("reviews.db")
+    conn = sqlite3.connect("data/reviews.db")
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -76,7 +77,7 @@ def generate_global_report():
         for a in data["support_actions"][:5]:
             report.append(f"- {a}")
 
-    with open("global_voc_report.md", "w") as f:
+    with open("reports/global_voc_report.md", "w") as f:
         f.write("\n".join(report))
 
     conn.close()
@@ -86,13 +87,13 @@ def generate_global_report():
 
 def generate_delta_report():
 
-    conn = sqlite3.connect("reviews.db")
+    conn = sqlite3.connect("data/reviews.db")
     cursor = conn.cursor()
 
     cursor.execute("""
     SELECT product, review, sentiment, themes
     FROM reviews
-    WHERE scraped_at >= datetime('now', '-7 days')
+    WHERE scraped_at >= datetime('now', '-1 minute')
     """)
 
     rows = cursor.fetchall()
@@ -142,8 +143,11 @@ def generate_delta_report():
         report.append("\n### Sample Reviews\n")
         for r in data["reviews"][:5]:
             report.append(f"- {r[:200]}")
+    
+    file_path = "reports/weekly_delta_analyse_report.md"
 
-    with open("weekly_delta_report.md", "w") as f:
+    os.path.exists(file_path)
+    with open("reports/weekly_delta_analyse_report.md", "w") as f:
         f.write("\n".join(report))
 
     conn.close()
