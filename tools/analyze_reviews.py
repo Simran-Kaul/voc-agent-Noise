@@ -114,7 +114,7 @@ def analyze_reviews():
                 review_id
             ))
 
-            print("Saved analysis for review:", review_id)
+            print("Saved analysis for review:", review_id, parsed)
 
         except Exception as e:
 
