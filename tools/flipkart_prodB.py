@@ -113,7 +113,7 @@ def scrape_with_retry(url, retries=3):
     return None
 
 
-page = 2
+page = 1
 
 while True:
     duplicate_count = 0

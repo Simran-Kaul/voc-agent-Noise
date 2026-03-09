@@ -77,3 +77,16 @@ New Reviews Captured: 13
 - Over all good product
 
 
+## Noise Master Buds Max
+
+New Reviews Captured: 8
+
+
+### Sample Reviews
+- Really Nice
+- Highly recommended
+- Worth the money
+- Excellent Product.
+- Sound Quality is awesome Crystal clear uninterrupted, Loved it
+
+
