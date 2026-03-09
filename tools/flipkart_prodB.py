@@ -77,12 +77,13 @@ def log_delta(new_reviews):
         
 # check if review already exists in database
 
-def review_exists(review_text, ):
+def review_exists(review_text,product):
 
     cursor.execute(
-        "SELECT 1 FROM reviews WHERE review = ?",
-        (review_text,)
+        "SELECT 1 FROM reviews WHERE review = ? AND product = ?", 
+        (review_text, product)
     )
+    
 
     return cursor.fetchone() is not None
 
@@ -112,7 +113,7 @@ def scrape_with_retry(url, retries=3):
     return None
 
 
-page = 1
+page = 2
 
 while True:
     duplicate_count = 0
@@ -162,7 +163,7 @@ while True:
 
             if review_text:
 
-                if review_exists(review_text):
+                if review_exists(review_text, product_name):
 
                     duplicate_count += 1
 
